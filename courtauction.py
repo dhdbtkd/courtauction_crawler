@@ -17,12 +17,14 @@ supabase_key: str = os.getenv("SUPABASE_KEY")
 supabase: Client = create_client(supabase_url, supabase_key)
 
 # 감시할 시군구 코드 세트
-detect_target = (
+detect_target = [
     {
         "sido_code" : "26",
         "sigu_code" : "350"
     }
-)
+]
+    
+
 
 # 오늘 날짜와 14일 후 날짜 계산
 today = datetime.now()
@@ -54,7 +56,6 @@ end_iso = end_date.isoformat()
 for target in detect_target:
     exist_datas = fetch_data_by_date_range("auctions", start_iso, today_iso)
     exist_datas = exist_datas.data
-    print(exist_datas)
 
     # 날짜를 'YYYY.MM.DD' 형식의 문자열로 변환
     start_date_str = today.strftime('%Y.%m.%d')
@@ -64,8 +65,8 @@ for target in detect_target:
     url = "https://www.courtauction.go.kr/RetrieveRealEstMulDetailList.laf"
     params = {
         "bubwLocGubun": "2",
-        "daepyoSidoCd": "26",
-        "daepyoSiguCd" : "350",
+        "daepyoSidoCd": target["sido_code"],
+        "daepyoSiguCd" : target["sigu_code"],
         "termStartDt": start_date_str,  # 동적으로 오늘 날짜 설정
         "termEndDt": end_date_str,      # 동적으로 14일 후 날짜 설정
         "sclsUtilCd": "00008020104",
@@ -130,11 +131,9 @@ for target in detect_target:
             params = {
                 "saNo": f"{year}013000{case_number}",
             }
-            print(params)
             response = requests.get(url, params=params)
             response.encoding = 'euc-kr'  # 한글 인코딩 문제를 해결하기 위해 설정
             html = response.text
-            print(html)
             soup_inside = BeautifulSoup(html, "html.parser")
             # 테이블 선택 (테이블 DOM 구조에 따라 id, class, 태그 등을 조정)
             table = soup_inside.find_all("table", class_="Ltbl_dt")  # 테이블 태그를 찾음
@@ -144,6 +143,8 @@ for target in detect_target:
                 for img_alt in img_alts:
                     img = img_table.find("img", alt=img_alt)
                     if img:
+                        print(img_alt, img)
+                        print(extract_original_image_url(img["src"]))
                         return extract_original_image_url(img["src"])
 
     def is_failed_auction_count_equal(exist_data, auction_status : str, failed_auction_count : int) -> bool:
@@ -179,10 +180,10 @@ for target in detect_target:
                 texts = [text for text in cell.stripped_strings]
                 
                 # 원본 HTML도 함께 출력
-                print(f"\n인덱스 {idx}:")
-                print(f"텍스트 데이터: {texts}")
-                print(f"원본 HTML: {cell}")
-                print("-" * 50)
+                # print(f"\n인덱스 {idx}:")
+                # print(f"텍스트 데이터: {texts}")
+                # print(f"원본 HTML: {cell}")
+                # print("-" * 50)
         for row in rows:
             cells = row.find_all("td")
             
@@ -225,14 +226,13 @@ for target in detect_target:
 
                 # 이미지 URL 추출
                 img_src = extract_image_url(case_info[1], case_info[0])
-                print(img_src)
 
                 # 중복 데이터 확인
                 is_exist, match_data = compare_case_id_duplicated(exist_datas, case_id)
                 if is_exist:
                     is_equal = is_failed_auction_count_equal(match_data, status, failed_auction_count)
                     if is_equal:
-                        print(f"이미 존재하는 데이터: {case_id} {match_data['status']} {match_data['failed_auction_count']} {status} {failed_auction_count}")
+                        # print(f"이미 존재하는 데이터: {case_id} {match_data['status']} {match_data['failed_auction_count']} {status} {failed_auction_count}")
                         continue
                     else:
                         auction_info = {
@@ -243,7 +243,7 @@ for target in detect_target:
                             'updated_at': datetime.now().isoformat(),
                         }
                         update_auction_data.append(auction_info)
-                        print("존재하는 데이터지만 상태가 다름")
+                        # print("존재하는 데이터지만 상태가 다름")
                 else:
                     # 신규 데이터 일 경우
                     auction_info = {
@@ -280,3 +280,9 @@ for target in detect_target:
             print("Data successfully scraped and stored in Supabase")
         else:
             print("No data found to insert")
+        
+        if update_auction_data:
+            # Supabase에 데이터 저장
+            for data in update_auction_data:
+                result = supabase.table('auctions').update(data).eq('id', data['id']).execute()
+                print(f"Successfully updated {len(update_auction_data)} records")
