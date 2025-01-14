@@ -23,7 +23,6 @@ detect_target = [
         "sigu_code" : "350"
     }
 ]
-    
 
 
 # 오늘 날짜와 14일 후 날짜 계산
@@ -125,11 +124,13 @@ for target in detect_target:
         numbers = re.match(r"(\d+)타경(\d+)", case_id)
         if numbers:
             year, case_number = numbers.groups()
+            slice = 10 - len(str(case_number))
+            ganerated_case_number = str(year)+"0130000"[:slice] + str(case_number)
             # "jiwonNm"을 EUC-KR로 URL 인코딩
             encoded_jiwon_nm = quote(jiwon_name, encoding='euc-kr')
             url = f"https://www.courtauction.go.kr/RetrieveRealEstCarHvyMachineMulDetailInfo.laf?jiwonNm={encoded_jiwon_nm}"
             params = {
-                "saNo": f"{year}013000{case_number}",
+                "saNo": ganerated_case_number,
             }
             response = requests.get(url, params=params)
             response.encoding = 'euc-kr'  # 한글 인코딩 문제를 해결하기 위해 설정
@@ -230,11 +231,14 @@ for target in detect_target:
                 # 중복 데이터 확인
                 is_exist, match_data = compare_case_id_duplicated(exist_datas, case_id)
                 if is_exist:
+                    # 이미 존재하는 데이터일 경우
                     is_equal = is_failed_auction_count_equal(match_data, status, failed_auction_count)
                     if is_equal:
+                        # 완전히 동일한 데이터
                         # print(f"이미 존재하는 데이터: {case_id} {match_data['status']} {match_data['failed_auction_count']} {status} {failed_auction_count}")
                         continue
                     else:
+                        # 데이터가 존재하지만 상태가 다른 경우
                         auction_info = {
                             'id' : match_data['id'],
                             'minimum_price' : minimum_price,
@@ -258,10 +262,11 @@ for target in detect_target:
                         'status' : status,
                         'failed_auction_count' : failed_auction_count,
                         'auction_date' : auction_date_info[1],
+                        'sido_code' : target["sido_code"],
+                        'sigu_code' : target["sigu_code"],
                         'created_at': datetime.now().isoformat(),
                         'updated_at': datetime.now().isoformat(),
                         'thumbnail_src' : img_src
-                        # 필요한 다른 필드들도 여기에 추가
                     }
                     auction_data.append(auction_info)
         
