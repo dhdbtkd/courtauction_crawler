@@ -1,0 +1,217 @@
+import requests
+import csv
+import os
+import re
+from dotenv import load_dotenv
+from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
+from supabase import create_client, Client
+from typing import List, Dict, Tuple, Optional
+
+# .env 파일 로드
+load_dotenv()
+
+supabase_url: str = os.getenv("SUPABASE_URL")
+supabase_key: str = os.getenv("SUPABASE_KEY")
+supabase: Client = create_client(supabase_url, supabase_key)
+
+# 감시할 시군구 코드 세트
+detect_target = (
+    {
+        "sido_code" : "26",
+        "sigu_code" : "350"
+    }
+)
+
+# 오늘 날짜와 14일 후 날짜 계산
+today = datetime.now()
+start_date = today - timedelta(days=14)
+end_date = today + timedelta(days=14)
+
+#기존 데이터 불러와야함
+def fetch_data_by_date_range(table_name: str, start_date: str, end_date: str):
+    """
+    Supabase에서 특정 날짜 범위의 데이터를 쿼리하는 함수
+    :param table_name: 테이블 이름
+    :param start_date: 시작 날짜 (ISO 8601 포맷)
+    :param end_date: 종료 날짜 (ISO 8601 포맷)
+    :return: 조회된 데이터 목록
+    """
+    try:
+        response = supabase.table(table_name).select("*") \
+            .gte("created_at", start_date) \
+            .lte("created_at", end_date).execute()
+        return response
+    except Exception as e:
+        print(f"Exception occurred: {e}")
+        return []
+
+today_iso =  today.isoformat()
+start_iso = start_date.isoformat()
+end_iso = end_date.isoformat()
+
+for target in detect_target:
+    exist_datas = fetch_data_by_date_range("auctions", start_iso, today_iso)
+    exist_datas = exist_datas.data
+    print(exist_datas)
+
+    # 날짜를 'YYYY.MM.DD' 형식의 문자열로 변환
+    start_date_str = today.strftime('%Y.%m.%d')
+    end_date_str = end_date.strftime('%Y.%m.%d')
+
+    # 1. URL 설정
+    url = "https://www.courtauction.go.kr/RetrieveRealEstMulDetailList.laf"
+    params = {
+        "bubwLocGubun": "2",
+        "daepyoSidoCd": "26",
+        "daepyoSiguCd" : "350",
+        "termStartDt": start_date_str,  # 동적으로 오늘 날짜 설정
+        "termEndDt": end_date_str,      # 동적으로 14일 후 날짜 설정
+        "sclsUtilCd": "00008020104",
+        "mclsUtilCd": "000080201",
+        "lclsUtilCd": "0000802",
+        "srnID": "PNO102001"
+    }
+
+    # 2. GET 요청 보내기
+    response = requests.get(url, params=params)
+    response.encoding = 'euc-kr'  # 한글 인코딩 문제를 해결하기 위해 설정
+    html = response.text
+
+    # 3. BeautifulSoup으로 HTML 파싱
+    soup = BeautifulSoup(html, "html.parser")
+
+    auction_data = []
+    # 4. 테이블 선택 (테이블 DOM 구조에 따라 id, class, 태그 등을 조정)
+    table = soup.find("table")  # 테이블 태그를 찾음
+    rows = table.find_all("tr")  # 테이블의 모든 행을 가져옴
+
+    def extract_failed_auction_count(text):
+        # 정규 표현식으로 '유찰'과 1자리 숫자 감지
+        match = re.search(r'(유찰)\s*(\d)', text)
+        
+        if match:
+            # 유찰과 숫자를 찾았다면, 유찰과 숫자를 반환
+            return match.group(1), int(match.group(2))
+        else:
+            # 유찰이 없다면, 원본 텍스트를 그대로 반환
+            return text, 0
+
+    def is_failed_auction_count_equal(exist_data, auction_status : str, failed_auction_count : int) -> bool:
+        if exist_data.status != auction_status :
+            return False
+        elif exist_data.status == "유찰":
+            if exist_data.failed_auction_count == failed_auction_count:
+                return True
+            else:
+                return False
+        else:
+            return True
+    def compare_case_id_duplicated(data: List[Dict], case_id: str) -> Tuple[bool, Optional[Dict]]:
+        """
+        사건번호가 중복되는 데이터가 있는지 확인하는 함수
+        :param data: 리스트 형태의 데이터
+        :param case_id: 사건번호
+        :return: 중복되는 데이터가 있으면 True, 없으면 False
+        """
+        for item in data:
+            if item['case_id'] == case_id:
+                return True, item
+        return False, None
+
+    if table:
+        rows = table.find_all("tr")[1:]  # 헤더 제외
+        if rows:
+            print("\n=== 첫 번째 행의 셀 데이터 분석 ===")
+            first_row = rows[0]
+            cells = first_row.find_all("td")
+            for idx, cell in enumerate(cells):
+                # 셀 내의 모든 텍스트 추출
+                texts = [text for text in cell.stripped_strings]
+                
+                # 원본 HTML도 함께 출력
+                print(f"\n인덱스 {idx}:")
+                print(f"텍스트 데이터: {texts}")
+                print(f"원본 HTML: {cell}")
+                print("-" * 50)
+        for row in rows:
+            cells = row.find_all("td")
+            
+            if cells:  # 빈 행 제외
+                case_cell = cells[1]  # 법원/사건번호가 있는 셀
+                case_info = [text for text in case_cell.stripped_strings]
+                case_id = case_info[1] #사건번호 추출
+                
+                apt_cell = cells[2]  # 아파트 분류
+                apt_info = [text for text in apt_cell.stripped_strings]
+
+                address_cell = cells[3]  # 주소 셀
+                address_info = [text for text in address_cell.stripped_strings]
+                area = re.search(r'\d+\.?\d*', address_info[1]) #주소 셀에서 면적 추출
+                if area:
+                    area = area.group()
+
+                etc_cell = cells[4]  # 주소 셀
+                etc_info = [text for text in etc_cell.stripped_strings]
+
+                price_cell = cells[5]  # 가격 셀
+                # 첫 번째 가격 (tbl_btm_noline div에서)
+                estimated_price_div = price_cell.find('div', class_='tbl_btm_noline')
+                estimated_price = estimated_price_div.get_text(strip=True) if estimated_price_div else None
+                
+                # 두 번째 가격 (tbl_btm_line div에서)
+                minimum_price_div = price_cell.find('div', class_='tbl_btm_line')
+                minimum_price = minimum_price_div.get_text(strip=True).split('(')[0].strip() if minimum_price_div else None
+                
+                # 쉼표 제거하고 정수로 변환
+                if estimated_price:
+                    estimated_price = int(estimated_price.replace(',', ''))
+                if minimum_price:
+                    minimum_price = int(minimum_price.replace(',', ''))
+
+                auction_date_cell = cells[6]  # 매각기일 및 진행상태 셀
+                auction_date_info = [text for text in auction_date_cell.stripped_strings]
+
+                status, failed_auction_count = extract_failed_auction_count(auction_date_info[2])
+
+                # 중복 데이터 확인
+                is_exist, match_data = compare_case_id_duplicated(exist_datas, case_id)
+                if is_exist:
+                    is_equal = is_failed_auction_count_equal(match_data, status, failed_auction_count)
+                    if is_equal:
+                        print(f"이미 존재하는 데이터: {case_id} {match_data}")
+                        continue
+                
+                auction_info = {
+                    'court': case_info[0] if len(case_info) > 0 else None,
+                    'case_id': case_info[1] if len(case_info) > 1 else None,
+                    'category' : apt_info[1] if len(apt_info) > 1 else None,
+                    'address' : address_info[0] if len(address_info) > 1 else None,
+                    'area' : area,
+                    'estimated_price' : estimated_price,
+                    'minimum_price' : minimum_price,
+                    'etc' : etc_info if len(etc_info) > 1 else None,
+                    'status' : status,
+                    'failed_auction_count' : failed_auction_count,
+                    'auction_date' : auction_date_info[1],
+                    'created_at': datetime.now().isoformat(),
+                    'updated_at': datetime.now().isoformat(),
+                    # 필요한 다른 필드들도 여기에 추가
+                }
+                auction_data.append(auction_info)
+        
+        def insert_to_supabase(data: List[Dict]) -> None:
+            try:
+                # court_auctions 테이블에 데이터 삽입
+                result = supabase.table('auctions').insert(data).execute()
+                print(f"Successfully inserted {len(data)} records")
+                return result
+            except Exception as e:
+                print(f"Error inserting data: {str(e)}")
+                raise
+        if auction_data:
+            # Supabase에 데이터 저장
+            insert_to_supabase(auction_data)
+            print("Data successfully scraped and stored in Supabase")
+        else:
+            print("No data found to insert")
