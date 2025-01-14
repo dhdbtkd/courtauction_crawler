@@ -1,9 +1,9 @@
 name: Run Court Auction Crawler
 
 on:
-  push:
-      branches:
-        - main  # main 브랜치에 푸시 시 실행
+    push:
+        branches:
+            - main # main 브랜치에 푸시 시 실행
     schedule:
         # 매일 12시간마다 실행
         - cron: '0 */12 * * *'
