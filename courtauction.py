@@ -12,7 +12,7 @@ from urllib.parse import quote
 from telegram_bot import TelegramNotifier
 
 # .env 파일 로드
-load_dotenv()
+# load_dotenv()
 
 async def main():
     telegramNotifier = TelegramNotifier(os.getenv('TELEGRAM_BOT_API_KEY'), os.getenv('TELEGRAM_CHAT_ID'))

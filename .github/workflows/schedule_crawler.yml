@@ -13,10 +13,10 @@ jobs:
         runs-on: ubuntu-latest
 
         env:
-            TELEGRAM_BOT_API_KEY: ${{ env.TELEGRAM_BOT_API_KEY }}
-            TELEGRAM_CHAT_ID: ${{ env.TELEGRAM_CHAT_ID }}
-            SUPABASE_URL: ${{ env.SUPABASE_URL }}
-            SUPABASE_KEY: ${{ env.SUPABASE_KEY }}
+            TELEGRAM_BOT_API_KEY: ${{ secrets.TELEGRAM_BOT_API_KEY }}
+            TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+            SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+            SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         steps:
             # 리포지토리를 체크아웃
             - name: Checkout repository
