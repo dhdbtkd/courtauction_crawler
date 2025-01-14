@@ -18,6 +18,13 @@ jobs:
             SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
             SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         steps:
+            # 환경 변수 확인을 위한 디버깅 스텝
+            - name: Check environment variables
+              run: |
+                  if [ -z "$TELEGRAM_BOT_API_KEY" ]; then echo "TELEGRAM_BOT_API_KEY is empty"; fi
+                  if [ -z "$TELEGRAM_CHAT_ID" ]; then echo "TELEGRAM_CHAT_ID is empty"; fi
+                  if [ -z "$SUPABASE_URL" ]; then echo "SUPABASE_URL is empty"; fi
+                  if [ -z "$SUPABASE_KEY" ]; then echo "SUPABASE_KEY is empty"; fi
             # 리포지토리를 체크아웃
             - name: Checkout repository
               uses: actions/checkout@v3

@@ -11,10 +11,13 @@ from typing import List, Dict, Tuple, Optional
 from urllib.parse import quote
 from telegram_bot import TelegramNotifier
 
-# .env 파일 로드
-# load_dotenv()
+# 로컬 개발환경에서만 .env 파일을 로드
+if os.path.exists('.env'):
+    load_dotenv()
 
 async def main():
+    print(os.getenv('TELEGRAM_BOT_API_KEY'))
+    print(os.getenv('SUPABASE_URL'))
     telegramNotifier = TelegramNotifier(os.getenv('TELEGRAM_BOT_API_KEY'), os.getenv('TELEGRAM_CHAT_ID'))
 
     supabase_url: str = os.getenv("SUPABASE_URL")
