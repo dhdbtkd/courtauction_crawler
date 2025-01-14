@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 from typing import List, Dict, Tuple, Optional
+from urllib.parse import quote
 
 # .env 파일 로드
 load_dotenv()
@@ -82,6 +83,7 @@ for target in detect_target:
     soup = BeautifulSoup(html, "html.parser")
 
     auction_data = []
+    update_auction_data = [] # 업데이트 할 데이터
     # 4. 테이블 선택 (테이블 DOM 구조에 따라 id, class, 태그 등을 조정)
     table = soup.find("table")  # 테이블 태그를 찾음
     rows = table.find_all("tr")  # 테이블의 모든 행을 가져옴
@@ -96,12 +98,59 @@ for target in detect_target:
         else:
             # 유찰이 없다면, 원본 텍스트를 그대로 반환
             return text, 0
+    
+    # 썸네일이 아닌 고화질 이미지로 변경
+    def extract_original_image_url(thumbnail_url: str) -> str:
+        # URL을 '&'로 나누기
+        url_parts = thumbnail_url.split('&')
+        
+        # 'filename' 파트를 찾아서 수정
+        for i, part in enumerate(url_parts):
+            if 'filename=' in part:
+                filename_part = part.split('=')
+                filename = filename_part[1]
+                
+                # 'T_'가 있을 경우에만 제거
+                if filename.startswith('T_'):
+                    filename = filename[2:]  # 'T_'를 제거
+                    
+                url_parts[i] = f"filename={filename}"
+        
+        # 수정된 URL을 다시 합치기
+        return 'https://www.courtauction.go.kr/' + '&'.join(url_parts)
+
+    #사건 번호로 대표 이미지 추출
+    def extract_image_url(case_id: str, jiwon_name : str) -> str:
+        numbers = re.match(r"(\d+)타경(\d+)", case_id)
+        if numbers:
+            year, case_number = numbers.groups()
+            # "jiwonNm"을 EUC-KR로 URL 인코딩
+            encoded_jiwon_nm = quote(jiwon_name, encoding='euc-kr')
+            url = f"https://www.courtauction.go.kr/RetrieveRealEstCarHvyMachineMulDetailInfo.laf?jiwonNm={encoded_jiwon_nm}"
+            params = {
+                "saNo": f"{year}013000{case_number}",
+            }
+            print(params)
+            response = requests.get(url, params=params)
+            response.encoding = 'euc-kr'  # 한글 인코딩 문제를 해결하기 위해 설정
+            html = response.text
+            print(html)
+            soup_inside = BeautifulSoup(html, "html.parser")
+            # 테이블 선택 (테이블 DOM 구조에 따라 id, class, 태그 등을 조정)
+            table = soup_inside.find_all("table", class_="Ltbl_dt")  # 테이블 태그를 찾음
+            if len(table) > 0:
+                img_table = table[2]
+                img_alts = ["감정평가서, 관련사진", "감정평가서, 전경도", "현황조사, 전경도"]
+                for img_alt in img_alts:
+                    img = img_table.find("img", alt=img_alt)
+                    if img:
+                        return extract_original_image_url(img["src"])
 
     def is_failed_auction_count_equal(exist_data, auction_status : str, failed_auction_count : int) -> bool:
-        if exist_data.status != auction_status :
+        if exist_data["status"] != auction_status :
             return False
-        elif exist_data.status == "유찰":
-            if exist_data.failed_auction_count == failed_auction_count:
+        elif exist_data["status"] == "유찰":
+            if exist_data["failed_auction_count"] == failed_auction_count:
                 return True
             else:
                 return False
@@ -174,31 +223,47 @@ for target in detect_target:
 
                 status, failed_auction_count = extract_failed_auction_count(auction_date_info[2])
 
+                # 이미지 URL 추출
+                img_src = extract_image_url(case_info[1], case_info[0])
+                print(img_src)
+
                 # 중복 데이터 확인
                 is_exist, match_data = compare_case_id_duplicated(exist_datas, case_id)
                 if is_exist:
                     is_equal = is_failed_auction_count_equal(match_data, status, failed_auction_count)
                     if is_equal:
-                        print(f"이미 존재하는 데이터: {case_id} {match_data}")
+                        print(f"이미 존재하는 데이터: {case_id} {match_data['status']} {match_data['failed_auction_count']} {status} {failed_auction_count}")
                         continue
-                
-                auction_info = {
-                    'court': case_info[0] if len(case_info) > 0 else None,
-                    'case_id': case_info[1] if len(case_info) > 1 else None,
-                    'category' : apt_info[1] if len(apt_info) > 1 else None,
-                    'address' : address_info[0] if len(address_info) > 1 else None,
-                    'area' : area,
-                    'estimated_price' : estimated_price,
-                    'minimum_price' : minimum_price,
-                    'etc' : etc_info if len(etc_info) > 1 else None,
-                    'status' : status,
-                    'failed_auction_count' : failed_auction_count,
-                    'auction_date' : auction_date_info[1],
-                    'created_at': datetime.now().isoformat(),
-                    'updated_at': datetime.now().isoformat(),
-                    # 필요한 다른 필드들도 여기에 추가
-                }
-                auction_data.append(auction_info)
+                    else:
+                        auction_info = {
+                            'id' : match_data['id'],
+                            'minimum_price' : minimum_price,
+                            'status' : status,
+                            'failed_auction_count' : failed_auction_count,
+                            'updated_at': datetime.now().isoformat(),
+                        }
+                        update_auction_data.append(auction_info)
+                        print("존재하는 데이터지만 상태가 다름")
+                else:
+                    # 신규 데이터 일 경우
+                    auction_info = {
+                        'court': case_info[0] if len(case_info) > 0 else None,
+                        'case_id': case_info[1] if len(case_info) > 1 else None,
+                        'category' : apt_info[1] if len(apt_info) > 1 else None,
+                        'address' : address_info[0] if len(address_info) > 1 else None,
+                        'area' : area,
+                        'estimated_price' : estimated_price,
+                        'minimum_price' : minimum_price,
+                        'etc' : etc_info if len(etc_info) > 1 else None,
+                        'status' : status,
+                        'failed_auction_count' : failed_auction_count,
+                        'auction_date' : auction_date_info[1],
+                        'created_at': datetime.now().isoformat(),
+                        'updated_at': datetime.now().isoformat(),
+                        'thumbnail_src' : img_src
+                        # 필요한 다른 필드들도 여기에 추가
+                    }
+                    auction_data.append(auction_info)
         
         def insert_to_supabase(data: List[Dict]) -> None:
             try:
