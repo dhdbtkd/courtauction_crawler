@@ -16,8 +16,6 @@ if os.path.exists('.env'):
     load_dotenv()
 
 async def main():
-    print(os.getenv('TELEGRAM_BOT_API_KEY'))
-    print(os.getenv('SUPABASE_URL'))
     telegramNotifier = TelegramNotifier(os.getenv('TELEGRAM_BOT_API_KEY'), os.getenv('TELEGRAM_CHAT_ID'))
 
     supabase_url: str = os.getenv("SUPABASE_URL")
@@ -35,7 +33,7 @@ async def main():
     # 오늘 날짜와 14일 후 날짜 계산
     today = datetime.now()
     start_date = today - timedelta(days=14)
-    end_date = today + timedelta(days=14)
+    end_date = today + timedelta(days=28)
 
     #기존 데이터 불러와야함
     def fetch_data_by_date_range(table_name: str, start_date: str, end_date: str):
@@ -50,7 +48,7 @@ async def main():
             response = supabase.table(table_name).select("*") \
                 .gte("created_at", start_date) \
                 .lte("created_at", end_date).execute()
-            return response
+            return response.data
         except Exception as e:
             print(f"Exception occurred: {e}")
             return []
@@ -61,7 +59,6 @@ async def main():
 
     for target in detect_target:
         exist_datas = fetch_data_by_date_range("auctions", start_iso, today_iso)
-        exist_datas = exist_datas.data
 
         # 날짜를 'YYYY.MM.DD' 형식의 문자열로 변환
         start_date_str = today.strftime('%Y.%m.%d')
@@ -70,15 +67,16 @@ async def main():
         # 1. URL 설정
         url = "https://www.courtauction.go.kr/RetrieveRealEstMulDetailList.laf"
         params = {
-            "bubwLocGubun": "2",
             "daepyoSidoCd": target["sido_code"],
             "daepyoSiguCd" : target["sigu_code"],
             "termStartDt": start_date_str,  # 동적으로 오늘 날짜 설정
             "termEndDt": end_date_str,      # 동적으로 14일 후 날짜 설정
-            "sclsUtilCd": "00008020104",
-            "mclsUtilCd": "000080201",
-            "lclsUtilCd": "0000802",
-            "srnID": "PNO102001"
+            # "lclsUtilCd" : "0000802", #건물
+            # "mclsUtilCd" : "000080201", #주거용건물
+            "sclsUtilCd" : "00008020104", #아파트
+            "srnID": "PNO102001",
+            "page" : "default40",
+            "targetRow" : "1"
         }
 
         # 2. GET 요청 보내기
@@ -258,26 +256,29 @@ async def main():
                         # 신규 데이터 일 경우
                         # 이미지 URL 추출
                         img_src = extract_image_url(case_info[1], case_info[0])
-                        auction_info = {
-                            'court': case_info[0] if len(case_info) > 0 else None,
-                            'case_id': case_info[1] if len(case_info) > 1 else None,
-                            'category' : apt_info[1] if len(apt_info) > 1 else None,
-                            'address' : address_info[0] if len(address_info) > 1 else None,
-                            'area' : area,
-                            'estimated_price' : estimated_price,
-                            'minimum_price' : minimum_price,
-                            'etc' : etc_info if len(etc_info) > 1 else None,
-                            'status' : status,
-                            'failed_auction_count' : failed_auction_count,
-                            'auction_date' : auction_date_info[1],
-                            'sido_code' : target["sido_code"],
-                            'sigu_code' : target["sigu_code"],
-                            'created_at': datetime.now().isoformat(),
-                            'updated_at': datetime.now().isoformat(),
-                            'thumbnail_src' : img_src
-                        }
-                        auction_data.append(auction_info)
-                        await telegramNotifier.send_photo(img_src, f"*[신규 매물]*\n종류 : {apt_info[1]}\n주소 : {address_info[0]}\n면적 : {area}㎡\n감정가 : {estimated_price}\n최저 낙찰가 : {minimum_price} \n상태 : {status} {f"{failed_auction_count}회" if failed_auction_count else ''}\n매각기일 : {auction_date_info[1]}")
+                        if img_src:
+                            auction_info = {
+                                'court': case_info[0] if len(case_info) > 0 else None,
+                                'case_id': case_info[1] if len(case_info) > 1 else None,
+                                'category' : apt_info[1] if len(apt_info) > 1 else None,
+                                'address' : address_info[0] if len(address_info) > 1 else None,
+                                'area' : area,
+                                'estimated_price' : estimated_price,
+                                'minimum_price' : minimum_price,
+                                'etc' : etc_info if len(etc_info) > 1 else None,
+                                'status' : status,
+                                'failed_auction_count' : failed_auction_count,
+                                'auction_date' : auction_date_info[1],
+                                'sido_code' : target["sido_code"],
+                                'sigu_code' : target["sigu_code"],
+                                'created_at': datetime.now().isoformat(),
+                                'updated_at': datetime.now().isoformat(),
+                                'thumbnail_src' : img_src
+                            }
+                            auction_data.append(auction_info)
+                            await telegramNotifier.send_photo(img_src, f"*[신규 매물]*\n종류 : {apt_info[1]}\n주소 : {address_info[0]}\n면적 : {area}㎡\n감정가 : {int(estimated_price/10000):,} 만원\n최저 낙찰가 : {int(minimum_price/10000):,} 만원 \n상태 : {status} {f"{failed_auction_count}회" if failed_auction_count else ''}\n매각기일 : {auction_date_info[1]}")
+                        else:
+                            print("리스트에는 있으나 공고중인 물건은 아님(이미지 없음)")
             
             def insert_to_supabase(data: List[Dict]) -> None:
                 try:

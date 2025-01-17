@@ -32,8 +32,6 @@ class TelegramNotifier:
                 photo=photo,
                 caption=caption,
                 parse_mode="Markdown",
-                connect_timeout=10,
-                pool_timeout=20
             )
             return True
         except TelegramError as e:
