@@ -27,13 +27,15 @@ class TelegramNotifier:
             bool: 전송 성공 여부
         """
         try:
-            await self.bot.send_photo(
+            message = await self.bot.send_photo(
                 chat_id=self.chat_id,
                 photo=photo,
                 caption=caption,
                 parse_mode="Markdown",
             )
-            return True
+            if message and message.photo:
+                print("사진 전송 성공!")
+                return True
         except TelegramError as e:
             print(f"사진 전송 실패: {str(e)}")
             return False

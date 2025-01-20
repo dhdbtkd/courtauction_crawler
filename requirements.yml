@@ -1,0 +1,13 @@
+name: courtauction # 원하는 환경 이름으로 변경
+channels:
+    - conda-forge
+    - defaults
+dependencies:
+    - python=3.12
+    - beautifulsoup4=4.12.3
+    - python-dotenv=1.0.1
+    - requests=2.32.3
+    - pip # pip 패키지를 사용하는 경우 추가
+    - pip:
+          - python-telegram-bot==21.10
+          - supabase==2.11.0
