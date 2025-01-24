@@ -3,13 +3,18 @@ import csv
 import os
 import re
 import asyncio
+import slack_sdk
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 from typing import List, Dict, Tuple, Optional
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlencode
 from telegram_bot import TelegramNotifier
+from slack_sdk.web.async_client import AsyncWebClient
+
+# 모니터링 할 타겟 시,구 불러오기
+from monitoring_target import monitoring_targets
 
 # 로컬 개발환경에서만 .env 파일을 로드
 if os.path.exists('.env'):
@@ -22,6 +27,9 @@ async def main():
     supabase_key: str = os.getenv("SUPABASE_KEY")
     supabase: Client = create_client(supabase_url, supabase_key)
 
+    slack_token: str = os.getenv("SLACK_TOKEN")
+    slack_client = AsyncWebClient(token=slack_token)
+    
     # 감시할 시군구 코드 세트
     detect_target = [
         {
@@ -152,7 +160,18 @@ async def main():
                             print(img_alt, img)
                             print(extract_original_image_url(img["src"]))
                             return extract_original_image_url(img["src"])
-
+                        
+        def generate_auction_detail_url(case_id: str, jiwon_name : str) -> str:
+            numbers = re.match(r"(\d+)타경(\d+)", case_id)
+            if numbers:
+                year, case_number = numbers.groups()
+                slice = 10 - len(str(case_number))
+                ganerated_case_number = str(year)+"0130000"[:slice] + str(case_number)
+                # "jiwonNm"을 EUC-KR로 URL 인코딩
+                encoded_jiwon_nm = quote(jiwon_name, encoding='euc-kr')
+                url = f"https://www.courtauction.go.kr/RetrieveRealEstCarHvyMachineMulDetailInfo.laf?jiwonNm={encoded_jiwon_nm}&saNo={ganerated_case_number}"
+                return url
+            
         def is_failed_auction_count_equal(exist_data, auction_status : str, failed_auction_count : int) -> bool:
             if exist_data["status"] != auction_status :
                 return False
@@ -276,10 +295,95 @@ async def main():
                                 'thumbnail_src' : img_src
                             }
                             auction_data.append(auction_info)
-                            await telegramNotifier.send_photo(img_src, f"*[신규 매물]*\n종류 : {apt_info[1]}\n주소 : {address_info[0]}\n면적 : {area}㎡\n감정가 : {int(estimated_price/10000):,} 만원\n최저 낙찰가 : {int(minimum_price/10000):,} 만원 \n상태 : {status} {f"{failed_auction_count}회" if failed_auction_count else ''}\n매각기일 : {auction_date_info[1]}")
+                            caption = f"*[신규 매물]*\n종류 : {apt_info[1]}\n주소 : {address_info[0]}\n면적 : {area}㎡\n감정가 : {int(estimated_price/10000):,} 만원\n최저 낙찰가 : {int(minimum_price/10000):,} 만원 \n상태 : {status} {f"{failed_auction_count}회" if failed_auction_count else ''}\n매각기일 : {auction_date_info[1]}"
+                            # 텔레그램 메시지 전송
+                            # await telegramNotifier.send_photo(img_src, caption)
+                            # 슬랙 메시지 전송
+                            # 이미지를 업로드
+                            slack_image_response = requests.get(img_src)
+                            if slack_image_response.status_code == 200:
+                                # 이미지를 임시 파일로 저장
+                                with open("temp_image.jpg", "wb") as f:
+                                    f.write(slack_image_response.content)
+                                
+                                # 파일 업로드 및 메시지 전송
+                                result = await slack_client.files_upload_v2(
+                                    channel="C08A2QP3QCD",
+                                    title="",
+                                    file="temp_image.jpg",
+                                    initial_comment="",
+                                )
+
+                                file_url = result["file"]["url_private_download"]  # 업로드된 파일의 URL 추출
+                                
+                                # 임시 파일 삭제
+                                os.remove("temp_image.jpg")
+
+                                auction_detail_url = generate_auction_detail_url(case_info[1], case_info[0])
+                                await slack_client.chat_postMessage(
+                                    channel="C089V5CB51S",
+                                    text=caption,
+                                    blocks=[
+                                        {
+                                            "type": "section",
+                                            "text": {
+                                                "type": "mrkdwn",
+                                                "text": f"새 매물을 발견했어요"
+                                            }
+                                        },
+                                        {
+                                            "type": "section",
+                                            "text": {
+                                                "type": "mrkdwn",
+                                                "text": f"*종류*\n🏢{apt_info[1]}\n*주소*\n{address_info[0]}\n*면적 :* {area}㎡"
+                                            },
+                                            "accessory": {
+                                                "type": "image",
+                                                "slack_file": {
+                                                    "id" : result["file"]["id"],
+                                                },
+                                                "alt_text": address_info[0]
+                                            }
+                                        },
+                                        {
+                                            "type": "section",
+                                            "fields": [
+                                                {
+                                                    "type": "mrkdwn",
+                                                    "text": f"*감정가:*\n{int(estimated_price/10000):,} 만원"
+                                                },
+                                                {
+                                                    "type": "mrkdwn",
+                                                    "text": f"*최저 낙찰가:*\n{int(minimum_price/10000):,} 만원"
+                                                },
+                                                {
+                                                    "type": "mrkdwn",
+                                                    "text": f"*상태:*\n{status}"
+                                                },
+                                                {
+                                                    "type": "mrkdwn",
+                                                    "text": "*매각기일:*\n2025.02.04."
+                                                }
+                                            ]
+                                        },
+                                        # {
+                                        #     "type": "actions",
+                                        #     "elements": [
+                                        #         {
+                                        #             "type": "button",
+                                        #             "text": {
+                                        #                 "type": "plain_text",
+                                        #                 "text": "자세히"
+                                        #             },
+                                        #             "url": auction_detail_url
+                                        #         }
+                                        #     ]
+                                        # }
+                                    ]
+                                )
                         else:
                             print("리스트에는 있으나 공고중인 물건은 아님(이미지 없음)")
-            
+            break
             def insert_to_supabase(data: List[Dict]) -> None:
                 try:
                     # court_auctions 테이블에 데이터 삽입
