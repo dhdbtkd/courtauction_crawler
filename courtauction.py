@@ -4,6 +4,7 @@ import os
 import re
 import asyncio
 import slack_sdk
+from pprint import pprint
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
@@ -73,25 +74,123 @@ async def main():
         end_date_str = end_date.strftime('%Y.%m.%d')
 
         # 1. URL 설정
-        url = "https://www.courtauction.go.kr/RetrieveRealEstMulDetailList.laf"
-        params = {
-            "daepyoSidoCd": target["sido_code"],
-            "daepyoSiguCd" : target["sigu_code"],
-            "termStartDt": start_date_str,  # 동적으로 오늘 날짜 설정
-            "termEndDt": end_date_str,      # 동적으로 14일 후 날짜 설정
-            # "lclsUtilCd" : "0000802", #건물
-            # "mclsUtilCd" : "000080201", #주거용건물
-            "sclsUtilCd" : "00008020104", #아파트
-            "srnID": "PNO102001",
-            "page" : "default40",
-            "targetRow" : "1"
+        url = "https://www.courtauction.go.kr/pgj/pgjsearch/searchControllerMain.on"
+
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+            "Referer": "https://www.courtauction.go.kr/",
+            "Content-Type": "application/json; charset=UTF-8",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+            "X-Requested-With": "XMLHttpRequest"
+        }
+        data = {
+            "dma_pageInfo": {
+                "pageNo": 1,
+                "pageSize": 10,
+                "bfPageNo": "",
+                "startRowNo": "",
+                "totalCnt": "",
+                "totalYn": "Y",
+                "groupTotalCount": ""
+            },
+            "dma_srchGdsDtlSrchInfo": {
+                "rletDspslSpcCondCd": "",
+                "bidDvsCd": "000331",
+                "mvprpRletDvsCd": "00031R",
+                "cortAuctnSrchCondCd": "0004601",
+                "rprsAdongSdCd": "26",
+                "rprsAdongSggCd": "350",
+                "rprsAdongEmdCd": "",
+                "rdnmSdCd": "",
+                "rdnmSggCd": "",
+                "rdnmNo": "",
+                "mvprpDspslPlcAdongSdCd": "",
+                "mvprpDspslPlcAdongSggCd": "",
+                "mvprpDspslPlcAdongEmdCd": "",
+                "rdDspslPlcAdongSdCd": "",
+                "rdDspslPlcAdongSggCd": "",
+                "rdDspslPlcAdongEmdCd": "",
+                "cortOfcCd": "B000210",
+                "jdbnCd": "",
+                "execrOfcDvsCd": "",
+                "lclDspslGdsLstUsgCd": "20000",
+                "mclDspslGdsLstUsgCd": "20100",
+                "sclDspslGdsLstUsgCd": "20104",
+                "cortAuctnMbrsId": "",
+                "aeeEvlAmtMin": "",
+                "aeeEvlAmtMax": "",
+                "lwsDspslPrcRateMin": "",
+                "lwsDspslPrcRateMax": "",
+                "flbdNcntMin": "",
+                "flbdNcntMax": "",
+                "objctArDtsMin": "",
+                "objctArDtsMax": "",
+                "mvprpArtclKndCd": "",
+                "mvprpArtclNm": "",
+                "mvprpAtchmPlcTypCd": "",
+                "notifyLoc": "on",
+                "lafjOrderBy": "",
+                "pgmId": "PGJ151F01",
+                "csNo": "",
+                "cortStDvs": "2",
+                "statNum": 1,
+                "bidBgngYmd": "20250206",
+                "bidEndYmd": "20250220",
+                "dspslDxdyYmd": "",
+                "fstDspslHm": "",
+                "scndDspslHm": "",
+                "thrdDspslHm": "",
+                "fothDspslHm": "",
+                "dspslPlcNm": "",
+                "lwsDspslPrcMin": "",
+                "lwsDspslPrcMax": "",
+                "grbxTypCd": "",
+                "gdsVendNm": "",
+                "fuelKndCd": "",
+                "carMdyrMax": "",
+                "carMdyrMin": "",
+                "carMdlNm": ""
+            }
         }
 
-        # 2. GET 요청 보내기
-        response = requests.get(url, params=params)
-        response.encoding = 'euc-kr'  # 한글 인코딩 문제를 해결하기 위해 설정
-        html = response.text
+        response = requests.post(url, json=data, headers=headers)
 
+        # url = "https://www.courtauction.go.kr/RetrieveRealEstMulDetailList.laf"
+        # params = {
+        #     "daepyoSidoCd": target["sido_code"],
+        #     "daepyoSiguCd" : target["sigu_code"],
+        #     "termStartDt": start_date_str,  # 동적으로 오늘 날짜 설정
+        #     "termEndDt": end_date_str,      # 동적으로 14일 후 날짜 설정
+        #     # "lclsUtilCd" : "0000802", #건물
+        #     # "mclsUtilCd" : "000080201", #주거용건물
+        #     "sclsUtilCd" : "00008020104", #아파트
+        #     "srnID": "PNO102001",
+        #     "page" : "default40",
+        #     "targetRow" : "1"
+        # }
+
+        # # 2. GET 요청 보내기
+        # response = requests.get(url, params=params)
+        # response.encoding = 'euc-kr'  # 한글 인코딩 문제를 해결하기 위해 설정
+        
+        # html = response.text
+
+        # JSON 응답 파싱
+        if response.status_code == 200:  # 요청이 성공했는지 확인
+            try:
+                response_data = response.json()  # JSON 응답 파싱
+                data = response_data.get('data', {})  # 'data' 키 가져오기 (없으면 빈 딕셔너리 반환)
+                search_results = data.get('dlt_srchResult', [])  # dlt_srchResult 키 가져오기, 없으면 빈 리스트 반환
+
+                # 데이터 순회
+                for item in search_results:
+                    pprint(item['buldNm'])  # 각 항목 출력
+            except ValueError:
+                print("JSON 디코딩에 실패했습니다.")
+        else:
+            print(f"요청 실패: {response.status_code}")
+
+        break
         # 3. BeautifulSoup으로 HTML 파싱
         soup = BeautifulSoup(html, "html.parser")
 
@@ -99,6 +198,10 @@ async def main():
         update_auction_data = [] # 업데이트 할 데이터
         # 4. 테이블 선택 (테이블 DOM 구조에 따라 id, class, 태그 등을 조정)
         table = soup.find("table")  # 테이블 태그를 찾음
+        if table is None:
+            print("테이블이 없습니다.")
+            continue
+        print(table)
         rows = table.find_all("tr")  # 테이블의 모든 행을 가져옴
 
         def extract_failed_auction_count(text):
