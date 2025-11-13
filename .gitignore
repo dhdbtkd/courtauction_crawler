@@ -1,4 +1,232 @@
+# ------------------------------
+# 💻 OS / 환경 공통
+# ------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+*.swp
+*.swo
+*.tmp
+*.log
+*.bak
+*.orig
+
+# ------------------------------
+# 🧠 Python
+# ------------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+.eggs/
+.Python
+.pytest_cache/
+.tox/
+.mypy_cache/
+.pyre/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+build/
+pip-wheel-metadata/
+*.spec
+
+# Virtual environments
+venv/
+.env/
+.env.*/
+.venv/
+venv.bak/
+env/
+ENV/
+env.bak/
+.ipynb_checkpoints/
+
+# ------------------------------
+# 🧰 Node.js / Frontend
+# ------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Build output
+dist/
+build/
+.cache/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# Environment
 .env
-__pycache__
-lambda_package/
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ------------------------------
+# ⚙️ IDE / Editor
+# ------------------------------
+# VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# JetBrains (PyCharm, WebStorm, IntelliJ)
+.idea/
+*.iml
+out/
+
+# Sublime
+*.sublime-workspace
+*.sublime-project
+
+# VS / Rider
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ------------------------------
+# 🐳 Docker / Containers
+# ------------------------------
+docker-compose.override.yml
+**/Dockerfile.local
+**/Dockerfile.dev
+**/Dockerfile.*
+**/docker-compose*.yml
+**/docker-compose*.yaml
+.docker/
+.dockerignore
+
+# ------------------------------
+# 🧾 Logs / Temp
+# ------------------------------
+logs/
+*.log
+*.out
+*.err
+tmp/
+temp/
+*.pid
+*.seed
+*.pid.lock
+
+# ------------------------------
+# 📸 Media / Static
+# ------------------------------
+uploads/
+media/
+staticfiles/
+images/
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.svg
+*.webp
+*.mp4
+*.mp3
+*.mov
+*.avi
+
+# ------------------------------
+# 🔒 Secrets / Credentials
+# ------------------------------
+*.pem
+*.key
+*.crt
+*.der
+*.pfx
+*.p12
+*.cer
+*.csr
+*.keystore
+*.env.*
+*.secrets.json
+secrets/
+credentials/
+private_keys/
+auth.json
+token.json
+
+# ------------------------------
+# 🧪 Testing / CI
+# ------------------------------
+.jest/
+.nyc_output/
+test-results/
+reports/
+coverage-final.json
+*.lcov
+
+# ------------------------------
+# ⚡️ Framework Specific (optional common)
+# ------------------------------
+# Django
+*.sqlite3
+local_settings.py
+db.sqlite3
+
+# React / Next / Vue
+.next/
+.nuxt/
+out/
+vue-dist/
+vite-dist/
+
+# Expo / React Native
+.expo/
+.expo-shared/
+*.expo/
+
+# Flutter
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-*
+.packages
+pubspec.lock
+android/.gradle/
+build/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework/
+ios/Flutter/Flutter.podspec
+ios/ServiceDefinitions.json
+ios/Runner/GeneratedPluginRegistrant.*
+
+# ------------------------------
+# 🧱 Miscellaneous
+# ------------------------------
+*.sqlite
+*.db
+*.tar
 *.zip
+*.rar
+*.7z
+*.gz
+*.tgz
+*.bak
+*.old
+*.backup
+
+# ------------------------------
+# ✅ Project specific ignore template
+# ------------------------------
+# Add project-specific ignore patterns below this line
+# e.g. for your /var/www/images or custom caches
+images/
