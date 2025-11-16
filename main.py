@@ -54,7 +54,12 @@ async def health_check():
 @app.post("/")
 async def telegram_webhook(request: Request):
     """Telegram Webhook Handler"""
-    data = await request.json()
+    try:
+        data = await request.json()
+    except Exception as e:
+        print("❌ Invalid JSON:", e)
+        return {"ok": False}
+
     print("📩 Telegram webhook received:", data)
 
     message = data.get("message", {})
@@ -62,10 +67,14 @@ async def telegram_webhook(request: Request):
     text = message.get("text", "")
     chat_id = str(chat.get("id"))
 
+    # 기본적인 파싱 실패 방지
     if not chat_id or not text:
-        return {"ok": False}
+        print("⚠️ Missing chat_id or text")
+        return {"ok": True}
 
-    # ✅ /start 명령 처리
+    # ------------------------------------------------------------
+    # 📌 START 명령 처리
+    # ------------------------------------------------------------
     if text.startswith("/start"):
         parts = text.split(" ")
         if len(parts) < 2:
@@ -75,42 +84,64 @@ async def telegram_webhook(request: Request):
             return {"ok": True}
 
         token = parts[1].strip()
+        print(f"🔍 Checking token: {token}")
 
-        res = (
-            supabase.table("users")
-            .select("id, email")
-            .eq("telegram_auth_token", token)
-            .maybe_single()
-            .execute()
-        )
+        # --- 사용자 조회 (maybe_single + fail-safe) ---
+        try:
+            res = (
+                supabase.table("users")
+                .select("id, email")
+                .eq("telegram_auth_token", token)
+                .maybe_single()
+                .execute()
+            )
+        except Exception as e:
+            print("❌ Supabase error (users query):", e)
+            await send_message(
+                chat_id, "⚠️ 서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+            )
+            return {"ok": True}
 
-        if not res.data:
+        # --- 토큰 유효성 검증 ---
+        if res is None or res.data is None:
             await send_message(chat_id, "❌ 잘못된 토큰입니다. 다시 시도해주세요.")
             return {"ok": True}
 
         user_id = res.data["id"]
         email = res.data["email"]
+        print(f"🔐 Token valid for user: {email}")
 
-        # ✅ 이미 같은 텔레그램 chat_id가 등록되어 있는지 확인
-        existing_channel = (
-            supabase.table("notification_channels")
-            .select("id, identifier")
-            .eq("user_id", user_id)
-            .eq("type", "telegram")
-            .single()
-            .execute()
-        )
+        # ------------------------------------------------------------
+        #     기존 텔레그램 연동 여부 확인
+        # ------------------------------------------------------------
+        try:
+            existing_channel = (
+                supabase.table("notification_channels")
+                .select("id, identifier")
+                .eq("user_id", user_id)
+                .eq("type", "telegram")
+                .maybe_single()
+                .execute()
+            )
+        except Exception as e:
+            print("❌ Supabase error (channel query):", e)
+            await send_message(
+                chat_id, "⚠️ 서버 오류가 발생했습니다. 다시 시도해주세요."
+            )
+            return {"ok": True}
 
-        if existing_channel.data:
-            # 같은 chat_id면 이미 연결된 상태
-            if existing_channel.data["identifier"] == chat_id:
+        # --- 기존 채널 존재 ---
+        if existing_channel and existing_channel.data:
+            saved_chat_id = existing_channel.data["identifier"]
+
+            # 동일한 chat_id → 이미 연동됨
+            if str(saved_chat_id) == chat_id:
                 await send_message(
-                    chat_id,
-                    f"🔄 이미 텔레그램 연동이 완료되어 있습니다!\n\n계정: {email}",
+                    chat_id, f"🔄 이미 텔레그램 연동이 완료되었습니다!\n\n계정: {email}"
                 )
                 return {"ok": True}
 
-            # 다른 텔레그램 계정이 이미 연동돼 있었음
+            # 다른 텔레그램과 이미 연결됨
             await send_message(
                 chat_id,
                 "⚠️ 이미 다른 텔레그램 계정과 연결된 상태입니다.\n"
@@ -118,27 +149,44 @@ async def telegram_webhook(request: Request):
             )
             return {"ok": True}
 
-        # 신규 등록
-        supabase.table("notification_channels").upsert(
-            {
-                "user_id": user_id,
-                "type": "telegram",
-                "identifier": chat_id,
-                "enabled": True,
-            }
-        ).execute()
+        # ------------------------------------------------------------
+        #     신규 연동 (Upsert + conflict-safe)
+        # ------------------------------------------------------------
+        try:
+            supabase.table("notification_channels").upsert(
+                {
+                    "user_id": user_id,
+                    "type": "telegram",
+                    "identifier": chat_id,
+                    "enabled": True,
+                },
+                on_conflict="user_id,type",
+            ).execute()
+        except Exception as e:
+            print("❌ Supabase error (upsert):", e)
+            await send_message(
+                chat_id, "⚠️ 알림 연동에 실패했습니다. 잠시 후 다시 시도해주세요."
+            )
+            return {"ok": True}
 
-        supabase.table("users").update({"telegram_auth_token": None}).eq(
-            "id", user_id
-        ).execute()
+        # 토큰 무효화 (재사용 방지)
+        try:
+            supabase.table("users").update({"telegram_auth_token": None}).eq(
+                "id", user_id
+            ).execute()
+        except Exception as e:
+            print("⚠️ Warning: Could not clear token:", e)
 
+        # 성공 메시지
         await send_message(
-            chat_id, f"✅ 텔레그램 알림이 연결되었습니다!\n\n계정: {email}"
+            chat_id, f"✅ 텔레그램 알림이 성공적으로 연결되었습니다!\n\n계정: {email}"
         )
         print(f"✅ Telegram linked: user={email}, chat_id={chat_id}")
         return {"ok": True}
 
-    # 기타 메시지 처리
+    # ------------------------------------------------------------
+    # 📌 기타 텍스트 메시지 처리
+    # ------------------------------------------------------------
     await send_message(
         chat_id, "🤖 명령어를 인식하지 못했습니다. /start 로 다시 시도해주세요."
     )
