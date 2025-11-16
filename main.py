@@ -80,7 +80,7 @@ async def telegram_webhook(request: Request):
             supabase.table("users")
             .select("id, email")
             .eq("telegram_auth_token", token)
-            .single()
+            .maybe_single()
             .execute()
         )
 
@@ -240,7 +240,7 @@ async def crawl_and_notify():
                 auction_repo.update_by_id(auction, auction["id"])
 
         print("⏳ 다음 지역 조회 전 2분 대기...")
-        await asyncio.sleep(120)
+        await asyncio.sleep(60)
 
     print("✅ 전체 크롤링 종료")
 
