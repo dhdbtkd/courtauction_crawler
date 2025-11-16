@@ -1,77 +1,56 @@
-# This file may be used to create an environment using:
-# $ conda create --name <env> --file <this file>
-# platform: osx-arm64
-# created-by: conda 25.7.0
-aiohappyeyeballs=2.4.4=pypi_0
-aiohttp=3.11.11=pypi_0
-aiosignal=1.3.2=pypi_0
-annotated-doc=0.0.4=pypi_0
-annotated-types=0.7.0=pypi_0
-anyio=4.8.0=pypi_0
-apscheduler=3.11.1=pypi_0
-attrs=24.3.0=pypi_0
-beautifulsoup4=4.12.3=pyha770c72_1
-brotli-python=1.1.0=py312hde4cb15_2
-bzip2=1.0.8=h99b78c6_7
-ca-certificates=2024.12.14=hf0a4a13_0
-certifi=2024.12.14=pyhd8ed1ab_0
-cffi=1.17.1=py312h0fad829_0
-charset-normalizer=3.4.1=pyhd8ed1ab_0
-click=8.3.0=pypi_0
-deprecation=2.1.0=pypi_0
-fastapi=0.121.1=pypi_0
-frozenlist=1.5.0=pypi_0
-gotrue=2.11.1=pypi_0
-h11=0.14.0=pypi_0
-h2=4.1.0=pyhd8ed1ab_1
-hpack=4.0.0=pyhd8ed1ab_1
-httpcore=1.0.7=pypi_0
-httpx=0.27.2=pypi_0
-hyperframe=6.0.1=pyhd8ed1ab_1
-idna=3.10=pyhd8ed1ab_1
-libcxx=19.1.7=ha82da77_0
-libexpat=2.6.4=h286801f_0
-libffi=3.4.2=h3422bc3_5
-liblzma=5.6.3=h39f12f2_1
-libsqlite=3.47.2=h3f77e49_0
-libzlib=1.3.1=h8359307_2
-multidict=6.1.0=pypi_0
-ncurses=6.5=h5e97a16_2
-openssl=3.4.0=h81ee809_1
-packaging=24.2=pypi_0
-pip=24.3.1=pyh8b19718_2
-postgrest=0.19.1=pypi_0
-propcache=0.2.1=pypi_0
-pycparser=2.22=pyh29332c3_1
-pydantic=2.10.5=pypi_0
-pydantic-core=2.27.2=pypi_0
-pysocks=1.7.1=pyha55dd90_7
-python=3.12.8=hc22306f_1_cpython
-python-dateutil=2.9.0.post0=pypi_0
-python-dotenv=1.0.1=pyhd8ed1ab_1
-python-telegram-bot=21.10=pypi_0
-python_abi=3.12=5_cp312
-readline=8.2=h92ec313_1
-realtime=2.1.0=pypi_0
-requests=2.32.3=pyhd8ed1ab_1
-setuptools=75.8.0=pyhff2d567_0
-six=1.17.0=pypi_0
-slack-sdk=3.34.0=pypi_0
-sniffio=1.3.1=pypi_0
-soupsieve=2.5=pyhd8ed1ab_1
-starlette=0.49.3=pypi_0
-storage3=0.11.0=pypi_0
-strenum=0.4.15=pypi_0
-supabase=2.11.0=pypi_0
-supafunc=0.9.0=pypi_0
-tk=8.6.13=h5083fa2_1
-typing-extensions=4.12.2=pypi_0
-tzdata=2024b=hc8b5060_0
-tzlocal=5.3.1=pypi_0
-urllib3=2.3.0=pyhd8ed1ab_0
-uvicorn=0.38.0=pypi_0
-websockets=13.1=pypi_0
-wheel=0.45.1=pyhd8ed1ab_1
-yarl=1.18.3=pypi_0
-zstandard=0.23.0=py312h15fbf35_1
-zstd=1.5.6=hb46c0d2_0
+aiohappyeyeballs==2.4.4
+aiohttp==3.11.11
+aiosignal==1.3.2
+annotated-doc==0.0.4
+annotated-types==0.7.0
+anyio==4.8.0
+APScheduler==3.11.1
+attrs==24.3.0
+beautifulsoup4 @ file:///home/conda/feedstock_root/build_artifacts/beautifulsoup4_1733230845337/work
+Brotli @ file:///Users/runner/miniforge3/conda-bld/brotli-split_1725267563793/work
+certifi @ file:///home/conda/feedstock_root/build_artifacts/certifi_1734380492396/work/certifi
+cffi @ file:///Users/runner/miniforge3/conda-bld/cffi_1725560578465/work
+charset-normalizer @ file:///home/conda/feedstock_root/build_artifacts/charset-normalizer_1735929714516/work
+click==8.3.0
+deprecation==2.1.0
+fastapi==0.121.1
+frozenlist==1.5.0
+gotrue==2.11.1
+h11==0.14.0
+h2 @ file:///home/conda/feedstock_root/build_artifacts/h2_1733298745555/work
+hpack @ file:///home/conda/feedstock_root/build_artifacts/hpack_1733299205993/work
+httpcore==1.0.7
+httpx==0.27.2
+hyperframe @ file:///home/conda/feedstock_root/build_artifacts/hyperframe_1733298771451/work
+idna @ file:///home/conda/feedstock_root/build_artifacts/idna_1733211830134/work
+multidict==6.1.0
+packaging==24.2
+postgrest==0.19.1
+propcache==0.2.1
+pycparser @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pycparser_1733195786/work
+pydantic==2.10.5
+pydantic_core==2.27.2
+PySocks @ file:///home/conda/feedstock_root/build_artifacts/pysocks_1733217236728/work
+python-dateutil==2.9.0.post0
+python-dotenv @ file:///home/conda/feedstock_root/build_artifacts/python-dotenv_1733243180666/work
+python-telegram-bot==21.10
+realtime==2.1.0
+requests @ file:///home/conda/feedstock_root/build_artifacts/requests_1733217035951/work
+setuptools==75.8.0
+six==1.17.0
+slack_sdk==3.34.0
+sniffio==1.3.1
+soupsieve @ file:///home/conda/feedstock_root/build_artifacts/soupsieve_1693929250441/work
+starlette==0.49.3
+storage3==0.11.0
+StrEnum==0.4.15
+supabase==2.11.0
+supafunc==0.9.0
+typing_extensions==4.12.2
+tzlocal==5.3.1
+urllib3 @ file:///home/conda/feedstock_root/build_artifacts/urllib3_1734859416348/work
+uvicorn==0.38.0
+websockets==13.1
+wheel==0.45.1
+yarl==1.18.3
+zstandard==0.23.0
