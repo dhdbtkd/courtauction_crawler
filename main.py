@@ -35,6 +35,20 @@ DEFAULT_DETECT_TARGET = [
 
 
 # --------------------------------------------------
+# ✅ Health Check API
+# --------------------------------------------------
+@app.get("/health")
+async def health_check():
+    """Health Check Endpoint"""
+    return {
+        "status": "healthy",
+        "message": "서비스가 정상적으로 동작 중입니다.",
+        "service": "CourtAuction Bot",
+        "timestamp": datetime.now().isoformat(),
+    }
+
+
+# --------------------------------------------------
 # ✅ Telegram Webhook 처리
 # --------------------------------------------------
 @app.post("/")
