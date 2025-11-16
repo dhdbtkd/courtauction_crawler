@@ -1,56 +1,7 @@
-aiohappyeyeballs==2.4.4
 aiohttp==3.11.11
-aiosignal==1.3.2
-annotated-doc==0.0.4
-annotated-types==0.7.0
-anyio==4.8.0
-APScheduler==3.11.1
-attrs==24.3.0
-beautifulsoup4 @ file:///home/conda/feedstock_root/build_artifacts/beautifulsoup4_1733230845337/work
-Brotli @ file:///Users/runner/miniforge3/conda-bld/brotli-split_1725267563793/work
-certifi @ file:///home/conda/feedstock_root/build_artifacts/certifi_1734380492396/work/certifi
-cffi @ file:///Users/runner/miniforge3/conda-bld/cffi_1725560578465/work
-charset-normalizer @ file:///home/conda/feedstock_root/build_artifacts/charset-normalizer_1735929714516/work
-click==8.3.0
-deprecation==2.1.0
-fastapi==0.121.1
-frozenlist==1.5.0
-gotrue==2.11.1
-h11==0.14.0
-h2 @ file:///home/conda/feedstock_root/build_artifacts/h2_1733298745555/work
-hpack @ file:///home/conda/feedstock_root/build_artifacts/hpack_1733299205993/work
-httpcore==1.0.7
-httpx==0.27.2
-hyperframe @ file:///home/conda/feedstock_root/build_artifacts/hyperframe_1733298771451/work
-idna @ file:///home/conda/feedstock_root/build_artifacts/idna_1733211830134/work
-multidict==6.1.0
-packaging==24.2
-postgrest==0.19.1
-propcache==0.2.1
-pycparser @ file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_pycparser_1733195786/work
-pydantic==2.10.5
-pydantic_core==2.27.2
-PySocks @ file:///home/conda/feedstock_root/build_artifacts/pysocks_1733217236728/work
-python-dateutil==2.9.0.post0
-python-dotenv @ file:///home/conda/feedstock_root/build_artifacts/python-dotenv_1733243180666/work
-python-telegram-bot==21.10
-realtime==2.1.0
-requests @ file:///home/conda/feedstock_root/build_artifacts/requests_1733217035951/work
-setuptools==75.8.0
-six==1.17.0
-slack_sdk==3.34.0
-sniffio==1.3.1
-soupsieve @ file:///home/conda/feedstock_root/build_artifacts/soupsieve_1693929250441/work
-starlette==0.49.3
-storage3==0.11.0
-StrEnum==0.4.15
-supabase==2.11.0
-supafunc==0.9.0
-typing_extensions==4.12.2
-tzlocal==5.3.1
-urllib3 @ file:///home/conda/feedstock_root/build_artifacts/urllib3_1734859416348/work
-uvicorn==0.38.0
-websockets==13.1
-wheel==0.45.1
-yarl==1.18.3
-zstandard==0.23.0
+apscheduler==3.11.1
+fastapi==0.121.2
+python-dotenv==1.2.1
+python-telegram-bot==22.5
+Requests==2.32.5
+supabase==2.24.0
