@@ -6,8 +6,14 @@ After=network.target
 Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/courtauction_crawler
-ExecStart=/home/ubuntu/courtauction_crawler/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
-Environment="PATH=/home/ubuntu/courtauction_crawler/venv/bin"
+
+# conda 환경 PATH 적용
+Environment="PATH=/home/ubuntu/courtauction_crawler/env/bin:/usr/bin:/bin"
+Environment="CONDA_PREFIX=/home/ubuntu/courtauction_crawler/env"
+Environment="CONDA_DEFAULT_ENV=/home/ubuntu/courtauction_crawler/env"
+
+ExecStart=/home/ubuntu/courtauction_crawler/env/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+
 Restart=always
 RestartSec=10
 StandardOutput=journal
