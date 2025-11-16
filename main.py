@@ -26,6 +26,13 @@ app = FastAPI(title="CourtAuction Bot", version="1.0.0")
 # --------------------------------------------------
 supabase = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
 
+# 기본 감시 대상 선언
+DEFAULT_DETECT_TARGET = [
+    {"sido_code": "26", "sigu_code": "350"},  # 해운대구
+    {"sido_code": "26", "sigu_code": "260"},  # 동래구
+    {"sido_code": "26", "sigu_code": "320"},  # 북구
+]
+
 
 # --------------------------------------------------
 # ✅ Telegram Webhook 처리
@@ -110,7 +117,7 @@ async def send_message(chat_id: str, text: str):
 # --------------------------------------------------
 async def crawl_and_notify():
     print("🚀 크롤링 시작")
-    # Repository & Service 초기화
+
     auction_repo = AuctionRepository(settings.SUPABASE_URL, settings.SUPABASE_KEY)
     notif_repo = NotificationRepository(settings.SUPABASE_URL, settings.SUPABASE_KEY)
     notifier = NotifierService(
@@ -120,22 +127,79 @@ async def crawl_and_notify():
     crawler = CrawlerService(auction_repo)
     notification_service = NotificationService(notif_repo, auction_repo, notifier)
 
-    detect_target = [{"sido_code": "26", "sigu_code": "350"}]
+    # ------------------------------------------------------
+    # 1) DB rules 불러오기
+    # ------------------------------------------------------
+    res = (
+        supabase.table("notification_rules")
+        .select("sido_code, sigu_code")
+        .eq("enabled", True)
+        .not_.is_("sido_code", None)
+        .not_.is_("sigu_code", None)
+        .execute()
+    )
 
-    # ✅ 클래스의 인스턴스 메서드 호출
-    new_auctions, updated_auctions = crawler.crawl_new_auctions(detect_target)
+    rules = res.data or []
 
-    if new_auctions:
-        print(f"📥 신규 매물 {len(new_auctions)}건 저장 중...")
-        auction_repo.insert_many(new_auctions)
-        await notification_service.process_new_auctions(new_auctions)
+    # ------------------------------------------------------
+    # 2) 기본 값 + DB 값 통합
+    # ------------------------------------------------------
+    merged = set()
 
-    if updated_auctions:
-        print(f"♻️ 업데이트된 매물 {len(updated_auctions)}건 갱신 중...")
-        for auction in updated_auctions:
-            auction_repo.update_by_id(auction, auction["id"])
+    for item in DEFAULT_DETECT_TARGET:
+        merged.add((item["sido_code"], item["sigu_code"]))
 
-    print("✅ 크롤링 및 알림 완료")
+    for rule in rules:
+        merged.add((str(rule["sido_code"]), str(rule["sigu_code"])))
+
+    # ------------------------------------------------------
+    # 3) prefix 제거
+    # ------------------------------------------------------
+    detect_target = []
+    for sido, sigu in merged:
+        sido_str = str(sido)
+        sigu_str = str(sigu)
+
+        # prefix 제거
+        if sigu_str.startswith(sido_str):
+            sigu_str = sigu_str[len(sido_str) :]
+
+        # 0 방어로직 (정상 sigu_code는 3~4자리)
+        if sigu_str in ["0", "", "00", "000"]:
+            print(f"⚠️ 잘못된 sigu_code 감지됨 → SKIP: sido={sido_str}, sigu={sigu_str}")
+            continue
+
+        detect_target.append({"sido_code": sido_str, "sigu_code": sigu_str})
+
+    print("📌 실제 감시 대상:", detect_target)
+
+    # ------------------------------------------------------
+    # 4) 각 지역별 순차 크롤링 (IP Ban 방지)
+    # ------------------------------------------------------
+    for idx, target in enumerate(detect_target):
+        print(f"🔎 [{idx + 1}/{len(detect_target)}] 지역 조회: {target}")
+
+        unit_target = [target]
+
+        # 지역별 크롤 실행
+        new_auctions, updated_auctions = crawler.crawl_new_auctions(unit_target)
+
+        # --- 신규 저장 ---
+        if new_auctions:
+            print(f"📥 지역 신규 매물 {len(new_auctions)}건 저장")
+            auction_repo.insert_many(new_auctions)
+            await notification_service.process_new_auctions(new_auctions)
+
+        # --- 업데이트 저장 ---
+        if updated_auctions:
+            print(f"♻️ 지역 업데이트 매물 {len(updated_auctions)}건 갱신")
+            for auction in updated_auctions:
+                auction_repo.update_by_id(auction, auction["id"])
+
+        print("⏳ 다음 지역 조회 전 2분 대기...")
+        await asyncio.sleep(120)
+
+    print("✅ 전체 크롤링 종료")
 
 
 # --------------------------------------------------
