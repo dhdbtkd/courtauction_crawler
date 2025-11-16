@@ -235,6 +235,6 @@ scheduler.start()
 # --------------------------------------------------
 @app.on_event("startup")
 async def startup_event():
-    await crawl_and_notify()
+    asyncio.create_task(crawl_and_notify())
     print("🚀 FastAPI server started and Telegram Webhook active.")
     print("🕓 Scheduler running every Monday and Thursday at 10:00 AM (KST).")
