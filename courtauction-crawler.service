@@ -7,8 +7,8 @@ Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/courtauction_crawler
 
-# conda 환경 PATH 적용
-Environment="PATH=/home/ubuntu/courtauction_crawler/env/bin:/usr/bin:/bin"
+# conda PATH 적용
+Environment="PATH=/home/ubuntu/courtauction_crawler/env/bin:/home/ubuntu/miniforge3/bin:/usr/bin:/bin"
 Environment="CONDA_PREFIX=/home/ubuntu/courtauction_crawler/env"
 Environment="CONDA_DEFAULT_ENV=/home/ubuntu/courtauction_crawler/env"
 
