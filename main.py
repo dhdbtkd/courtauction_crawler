@@ -91,6 +91,34 @@ async def telegram_webhook(request: Request):
         user_id = res.data["id"]
         email = res.data["email"]
 
+        # ✅ 이미 같은 텔레그램 chat_id가 등록되어 있는지 확인
+        existing_channel = (
+            supabase.table("notification_channels")
+            .select("id, identifier")
+            .eq("user_id", user_id)
+            .eq("type", "telegram")
+            .single()
+            .execute()
+        )
+
+        if existing_channel.data:
+            # 같은 chat_id면 이미 연결된 상태
+            if existing_channel.data["identifier"] == chat_id:
+                await send_message(
+                    chat_id,
+                    f"🔄 이미 텔레그램 연동이 완료되어 있습니다!\n\n계정: {email}",
+                )
+                return {"ok": True}
+
+            # 다른 텔레그램 계정이 이미 연동돼 있었음
+            await send_message(
+                chat_id,
+                "⚠️ 이미 다른 텔레그램 계정과 연결된 상태입니다.\n"
+                "기존 연결을 해제한 후 다시 시도해주세요.",
+            )
+            return {"ok": True}
+
+        # 신규 등록
         supabase.table("notification_channels").upsert(
             {
                 "user_id": user_id,
@@ -110,6 +138,7 @@ async def telegram_webhook(request: Request):
         print(f"✅ Telegram linked: user={email}, chat_id={chat_id}")
         return {"ok": True}
 
+    # 기타 메시지 처리
     await send_message(
         chat_id, "🤖 명령어를 인식하지 못했습니다. /start 로 다시 시도해주세요."
     )
