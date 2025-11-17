@@ -300,7 +300,6 @@ scheduler = AsyncIOScheduler(timezone="Asia/Seoul")
 scheduler.add_job(
     crawl_and_notify,
     trigger="cron",
-    day_of_week="mon,thu",
     hour=10,
     minute=0,
 )
