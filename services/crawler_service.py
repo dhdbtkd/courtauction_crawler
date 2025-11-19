@@ -7,6 +7,8 @@ from typing import List, Dict, Tuple, Optional
 from repositories.auction_repository import AuctionRepository
 from utils.env_utils import is_oracle_instance
 from utils.date_utils import convert_yyyymmdd_to_dotted
+from utils.naver_utils import get_coordinates
+from utils.address_utils import build_full_address
 
 
 class CrawlerService:
@@ -144,7 +146,7 @@ class CrawlerService:
         self, detect_target: List[Dict]
     ) -> Tuple[List[Dict], List[Dict]]:
         """법원경매 사이트에서 신규 및 갱신 매물 수집"""
-
+        raw_results = []
         today = datetime.now()
         start_date = today - timedelta(days=15)
         end_date = today + timedelta(days=15)
@@ -254,6 +256,16 @@ class CrawlerService:
 
                 json_data = response.json()
                 search_results = json_data.get("data", {}).get("dlt_srchResult", [])
+                raw_results.extend(
+                    [
+                        {
+                            **item,
+                            "sido_code": target["sido_code"],
+                            "sigu_code": target["sigu_code"],
+                        }
+                        for item in search_results
+                    ]
+                )
                 print(
                     f"📑 {len(search_results)}건 검색됨 (sido: {target['sido_code']}, sigu: {target['sigu_code']})"
                 )
@@ -269,7 +281,7 @@ class CrawlerService:
                     if failed_count > 0:
                         status = "유찰"
 
-                    # ✅ 신규 매물
+                    # 신규 매물
                     if not is_exist:
                         images = self.extract_image_list(
                             case_id,
@@ -308,6 +320,11 @@ class CrawlerService:
 
                         auction_date = convert_yyyymmdd_to_dotted(item["maeGiil"])
 
+                        full_addr = build_full_address(item)
+                        longitude, latitude, jibun_address, road_address = (
+                            get_coordinates(full_addr)
+                        )
+
                         auction = {
                             "court": item.get("jiwonNm"),
                             "case_id": case_id,
@@ -323,6 +340,26 @@ class CrawlerService:
                             "sido_code": target["sido_code"],
                             "sigu_code": target["sigu_code"],
                             "thumbnail_src": file_url,
+                            "rd1_nm": item.get("rd1Nm"),
+                            "rd2_nm": item.get("rd2Nm"),
+                            "rd_eub_myun": item.get("rdEubMyun"),
+                            "rd_nm": item.get("rdNm"),
+                            "buld_no": item.get("buldNo"),
+                            "rd_addr_sub": item.get("rdAddrSub"),
+                            "bg_place_rd_all_addr": item.get("bgPlaceRdAllAddr"),
+                            "conv_addr": item.get("convAddr"),
+                            "buld_nm": item.get("buldNm"),
+                            "buld_list": item.get("buldList"),
+                            "srch_hjgu_lotno": item.get("srchHjguLotno"),
+                            "srch_hjgu_rd_cd": item.get("srchHjguRdCd"),
+                            "srch_hjgu_dong_cd": item.get("srchHjguDongCd"),
+                            "docid": item.get("docid"),
+                            "sa_no": item.get("saNo"),
+                            "bo_cd": item.get("boCd"),
+                            "latitude": latitude,
+                            "longitude": longitude,
+                            "jibun_address": jibun_address,
+                            "road_address": road_address,
                             "created_at": datetime.now().isoformat(),
                             "updated_at": datetime.now().isoformat(),
                         }
@@ -349,4 +386,4 @@ class CrawlerService:
         print(
             f"✅ 신규 {len(new_auctions)}건, 업데이트 {len(updated_auctions)}건 감지됨"
         )
-        return new_auctions, updated_auctions
+        return raw_results, new_auctions, updated_auctions

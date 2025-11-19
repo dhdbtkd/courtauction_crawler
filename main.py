@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from supabase import create_client
 
+from utils.json_utils import debug_save_json
 from services.crawler_service import CrawlerService
 from services.notification_service import NotificationService
 from repositories.auction_repository import AuctionRepository
@@ -273,8 +274,15 @@ async def crawl_and_notify():
         unit_target = [target]
 
         # 지역별 크롤 실행
-        new_auctions, updated_auctions = crawler.crawl_new_auctions(unit_target)
+        raw_results, new_auctions, updated_auctions = crawler.crawl_new_auctions(
+            unit_target
+        )
 
+        debug_save_json(
+            target["sido_code"],
+            target["sigu_code"],
+            raw_results,  # 무조건 원본 전체 저장
+        )
         # --- 신규 저장 ---
         if new_auctions:
             print(f"📥 지역 신규 매물 {len(new_auctions)}건 저장")

@@ -32,12 +32,15 @@ def get_env(name: str, default=None):
     return val
 
 
-# ✅ 이제 load_settings() 이후 호출해야 함
+# 이제 load_settings() 이후 호출해야 함
 SUPABASE_URL = None
 SUPABASE_KEY = None
 SLACK_TOKEN = None
 TELEGRAM_BOT_API_KEY = None
 TELEGRAM_CHAT_ID = None
+DEBUG = None
+NAVER_ACCESS_KEY = None
+NAVER_CLIENT_SECRET = None
 
 
 def init_settings():
@@ -47,9 +50,16 @@ def init_settings():
         SUPABASE_KEY, \
         SLACK_TOKEN, \
         TELEGRAM_BOT_API_KEY, \
-        TELEGRAM_CHAT_ID
+        TELEGRAM_CHAT_ID, \
+        DEBUG, \
+        NAVER_ACCESS_KEY, \
+        NAVER_CLIENT_SECRET
+
     SUPABASE_URL = get_env("SUPABASE_URL")
     SUPABASE_KEY = get_env("SUPABASE_KEY")
     SLACK_TOKEN = get_env("SLACK_TOKEN")
     TELEGRAM_BOT_API_KEY = get_env("TELEGRAM_BOT_API_KEY")
     TELEGRAM_CHAT_ID = get_env("TELEGRAM_CHAT_ID")
+    NAVER_ACCESS_KEY = get_env("NAVER_ACCESS_KEY")
+    NAVER_CLIENT_SECRET = get_env("NAVER_CLIENT_SECRET")
+    DEBUG = get_env("DEBUG")
