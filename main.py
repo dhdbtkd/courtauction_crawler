@@ -286,7 +286,17 @@ async def crawl_and_notify():
         # --- 신규 저장 ---
         if new_auctions:
             print(f"📥 지역 신규 매물 {len(new_auctions)}건 저장")
-            auction_repo.insert_many(new_auctions)
+            inserted_ids = auction_repo.insert_many(new_auctions)
+            if inserted_ids and len(inserted_ids) == len(new_auctions):
+                # zip을 사용하여 ID와 경매 객체를 묶어 ID 할당
+                for auction, auction_id in zip(new_auctions, inserted_ids):
+                    auction["id"] = auction_id
+            else:
+                # ID를 가져오는 데 실패한 경우 처리 (선택 사항)
+                print(
+                    "⚠️ 경매 저장에는 성공했으나, 삽입된 ID를 가져오는 데 실패했습니다. 알림 처리를 건너뛸 수 있습니다."
+                )
+                # 이 경우, new_auctions에 id가 없어 알림 로그 기록이 실패할 수 있습니다.
             await notification_service.process_new_auctions(new_auctions)
 
         # --- 업데이트 저장 ---

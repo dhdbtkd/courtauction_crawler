@@ -29,20 +29,20 @@ class NotificationService:
                     channel_type = ch["type"]
 
                     message = self._format_message(auction, rule, channel_type)
-                    # ✅ 실제 메시지 전송
+                    # 실제 메시지 전송
                     if channel_type == "slack":
                         await self.notifier.send_slack_message(
                             ch["identifier"], message
                         )
                     elif channel_type == "telegram":
-                        # ✅ 썸네일 이미지를 함께 전송
+                        # 썸네일 이미지를 함께 전송
                         await self.notifier.send_telegram_message(
                             ch["identifier"],
                             message,
                             image_url=auction.get("thumbnail_src"),
                         )
 
-                    # ✅ 로그 기록
+                    # 로그 기록
                     self.notif_repo.insert_notification_log(
                         {
                             "user_id": rule["user_id"],

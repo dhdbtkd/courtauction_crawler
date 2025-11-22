@@ -74,7 +74,7 @@ async def telegram_webhook(request: Request):
         # ✅ 성공 메시지 전송
         await send_message(
             chat_id,
-            f"✅ 텔레그램 알림이 성공적으로 연결되었습니다!\n\n계정: {email}\n\n이제 경매 알림을 받아볼 수 있습니다.",
+            f"✅ 텔레그램 알림이 성공적으로 연결되었습니다!\n\n계정: {email}\n\n이제 경매 알림을 받아볼 수 있습니다.\n페이지로 돌아가서 새로고침해주세요.",
         )
 
         print(f"✅ Telegram linked successfully → user={email}, chat_id={chat_id}")
