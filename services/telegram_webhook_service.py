@@ -4,7 +4,7 @@ from supabase import create_client
 import requests
 import os
 
-from config import settings  # SUPABASE_URL, SUPABASE_KEY, TELEGRAM_BOT_API_KEY
+from config.settings import settings
 
 app = FastAPI()
 

@@ -7,21 +7,28 @@ from fastapi import FastAPI, Request
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from supabase import create_client
 
+
+from routers import router as api_router
+
 from utils.json_utils import debug_save_json
 from services.crawler_service import CrawlerService
 from services.notification_service import NotificationService
 from repositories.auction_repository import AuctionRepository
 from repositories.notification_repository import NotificationRepository
 from services.notifier_service import NotifierService
-from config import settings
+from services.crawl_log_service import CrawlLogService
+from repositories.crawl_log_repository import CrawlLogRepository
+from config.settings import settings
 
-settings.load_settings()
-settings.init_settings()
+
+print(settings)
 # --------------------------------------------------
 # ✅ FastAPI 앱 생성
 # --------------------------------------------------
 app = FastAPI(title="CourtAuction Bot", version="1.0.0")
 
+
+app.include_router(api_router)
 # --------------------------------------------------
 # ✅ Supabase 클라이언트
 # --------------------------------------------------
@@ -215,6 +222,8 @@ async def crawl_and_notify():
     notifier = NotifierService(
         slack_token=settings.SLACK_TOKEN, telegram_api_key=settings.TELEGRAM_BOT_API_KEY
     )
+    crawl_log_repo = CrawlLogRepository(supabase)
+    crawl_log_service = CrawlLogService(crawl_log_repo, supabase)
 
     crawler = CrawlerService(auction_repo)
     notification_service = NotificationService(notif_repo, auction_repo, notifier)
@@ -248,30 +257,55 @@ async def crawl_and_notify():
     # 3) prefix 제거
     # ------------------------------------------------------
     detect_target = []
-    for sido, sigu in merged:
-        sido_str = str(sido)
-        sigu_str = str(sigu)
 
-        # prefix 제거
+    for sido, sigu in merged:
+        sido_str = str(sido).strip()
+        sigu_str = str(sigu).strip()
+
+        # ---- 1) 기본 형식 검사 ----
+        # sido: exactly 2 digits
+        if not (len(sido_str) == 2 and sido_str.isdigit()):
+            print(f"⚠️ 잘못된 sido_code → SKIP: sido={sido_str}, sigu={sigu_str}")
+            continue
+
+        # sigu: 3~4자리 들어오기도 해서 먼저 prefix 제거 후 검사
+        if not sigu_str.isdigit():
+            print(f"⚠️ sigu_code 숫자 아님 → SKIP: sido={sido_str}, sigu={sigu_str}")
+            continue
+
+        # ---- 2) prefix 제거 ----
+        # 예: sido=26, sigu=260 → prefix 제거 후 0 → 잘못된 코드로 판단
         if sigu_str.startswith(sido_str):
             sigu_str = sigu_str[len(sido_str) :]
 
-        # 0 방어로직 (정상 sigu_code는 3~4자리)
-        if sigu_str in ["0", "", "00", "000"]:
-            print(f"⚠️ 잘못된 sigu_code 감지됨 → SKIP: sido={sido_str}, sigu={sigu_str}")
+        # ---- 3) prefix 제거 결과 검사 ----
+        # 정확히 3자리만 유효
+        if not (len(sigu_str) == 3 and sigu_str.isdigit()):
+            print(
+                f"⚠️ 잘못된 sigu_code 감지됨 → SKIP: sido={sido_str}, sigu(after)={sigu_str}"
+            )
             continue
 
-        detect_target.append({"sido_code": sido_str, "sigu_code": sigu_str})
+        # 최종 유효한 경우만 추가
+        detect_target.append(
+            {
+                "sido_code": sido_str,
+                "sigu_code": sigu_str,
+            }
+        )
 
     print("📌 실제 감시 대상:", detect_target)
 
-    # ------------------------------------------------------
+    # -----------------------åå-------------------------------
     # 4) 각 지역별 순차 크롤링 (IP Ban 방지)
     # ------------------------------------------------------
     for idx, target in enumerate(detect_target):
         print(f"🔎 [{idx + 1}/{len(detect_target)}] 지역 조회: {target}")
 
         unit_target = [target]
+
+        # 시작 로그 기록
+        log_id = crawl_log_service.start(sido_str, sigu_str)
 
         # 지역별 크롤 실행
         raw_results, new_auctions, updated_auctions = crawler.crawl_new_auctions(
@@ -283,6 +317,8 @@ async def crawl_and_notify():
             target["sigu_code"],
             raw_results,  # 무조건 원본 전체 저장
         )
+        new_count = len(new_auctions)
+        updated_count = len(updated_auctions)
         # --- 신규 저장 ---
         if new_auctions:
             print(f"📥 지역 신규 매물 {len(new_auctions)}건 저장")
@@ -304,6 +340,9 @@ async def crawl_and_notify():
             print(f"♻️ 지역 업데이트 매물 {len(updated_auctions)}건 갱신")
             for auction in updated_auctions:
                 auction_repo.update_by_id(auction, auction["id"])
+
+        # 종료 로그 기록
+        crawl_log_service.finish(log_id, new_count, updated_count)
 
         print("⏳ 다음 지역 조회 전 2분 대기...")
         await asyncio.sleep(60)

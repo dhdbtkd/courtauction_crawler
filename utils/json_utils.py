@@ -1,7 +1,7 @@
 import json
 from datetime import datetime
 from pathlib import Path
-from config import settings
+from config.settings import settings
 
 
 def debug_save_json(sido, sigu, raw_results):

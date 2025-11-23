@@ -1,65 +1,43 @@
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from functools import lru_cache
 import os
-from dotenv import load_dotenv
-from utils.env_utils import is_oracle_instance
 
 
-def load_settings():
+class Settings(BaseSettings):
+    # ====== 환경변수 목록 ======
+    SUPABASE_URL: str
+    SUPABASE_KEY: str
+
+    SLACK_TOKEN: str | None = None
+    TELEGRAM_BOT_API_KEY: str | None = None
+    TELEGRAM_CHAT_ID: str | None = None
+
+    NAVER_ACCESS_KEY: str | None = None
+    NAVER_CLIENT_SECRET: str | None = None
+
+    ADMIN_SECRET: str
+    DEBUG: bool = False
+
+    # ====== pydantic v2 설정 ======
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",  # .env에 더 많은 항목이 있어도 무시
+    )
+
+
+@lru_cache
+def get_settings():
     """
-    .env 파일을 절대경로 기준으로 안전하게 로드
+    서버 환경에 따라 다른 경로에서 .env 로드
     """
-    if is_oracle_instance():
-        env_path = "/home/ubuntu/scripts/.env"
-    else:
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        root_dir = os.path.abspath(os.path.join(current_dir, ".."))
-        env_path = os.path.join(root_dir, ".env")
-        if not os.path.exists(env_path):
-            env_path = os.path.join(os.getcwd(), ".env")
+    # ORACLE 같은 특정 서버라면 별도 경로
+    if os.getenv("ORACLE_INSTANCE") == "1":
+        return Settings(_env_file="/home/ubuntu/scripts/.env")
 
-    print(f"[settings] Loading .env from: {env_path}")
-
-    if os.path.exists(env_path):
-        load_dotenv(dotenv_path=env_path, override=True)
-    else:
-        print(f"⚠️  .env 파일을 찾을 수 없습니다. ({env_path})")
+    # 기본 .env
+    return Settings()
 
 
-def get_env(name: str, default=None):
-    """환경변수 헬퍼"""
-    val = os.getenv(name, default)
-    if val is None:
-        print(f"⚠️  환경변수 {name} 누락 (기본값 사용: {default})")
-    return val
-
-
-# 이제 load_settings() 이후 호출해야 함
-SUPABASE_URL = None
-SUPABASE_KEY = None
-SLACK_TOKEN = None
-TELEGRAM_BOT_API_KEY = None
-TELEGRAM_CHAT_ID = None
-DEBUG = None
-NAVER_ACCESS_KEY = None
-NAVER_CLIENT_SECRET = None
-
-
-def init_settings():
-    """환경변수를 실제로 settings에 반영"""
-    global \
-        SUPABASE_URL, \
-        SUPABASE_KEY, \
-        SLACK_TOKEN, \
-        TELEGRAM_BOT_API_KEY, \
-        TELEGRAM_CHAT_ID, \
-        DEBUG, \
-        NAVER_ACCESS_KEY, \
-        NAVER_CLIENT_SECRET
-
-    SUPABASE_URL = get_env("SUPABASE_URL")
-    SUPABASE_KEY = get_env("SUPABASE_KEY")
-    SLACK_TOKEN = get_env("SLACK_TOKEN")
-    TELEGRAM_BOT_API_KEY = get_env("TELEGRAM_BOT_API_KEY")
-    TELEGRAM_CHAT_ID = get_env("TELEGRAM_CHAT_ID")
-    NAVER_ACCESS_KEY = get_env("NAVER_ACCESS_KEY")
-    NAVER_CLIENT_SECRET = get_env("NAVER_CLIENT_SECRET")
-    DEBUG = get_env("DEBUG")
+# 최종적으로 settings 객체 생성
+settings = get_settings()

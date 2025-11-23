@@ -1,5 +1,5 @@
 import requests
-from config import settings
+from config.settings import settings
 
 
 def get_coordinates(address: str):
